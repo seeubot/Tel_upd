@@ -52,7 +52,6 @@ const appVersionSchema = new mongoose.Schema({
     }
 });
 
-// Update timestamp on save
 appVersionSchema.pre('save', function(next) {
     this.updatedAt = new Date();
     next();
