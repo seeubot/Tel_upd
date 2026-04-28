@@ -29,19 +29,15 @@ const upload = multer({
         cb(null, true);
     },
     limits: {
-        fileSize: 100 * 1024 * 1024 // 100MB max
+        fileSize: 100 * 1024 * 1024 // 100MB
     }
 });
 
-// ──────────────────────────────────────────────
 // GET /api/version/check?currentVersion=1
-// Android app calls this to check for updates
-// ──────────────────────────────────────────────
 router.get('/check', async (req, res) => {
     try {
         const currentVersion = parseInt(req.query.currentVersion) || 0;
 
-        // Find the latest active version higher than current
         const latestVersion = await AppVersion.findOne({
             versionCode: { $gt: currentVersion },
             isActive: true
@@ -68,27 +64,18 @@ router.get('/check', async (req, res) => {
 
     } catch (error) {
         console.error('Check update error:', error);
-        res.status(500).json({
-            hasUpdate: false,
-            error: 'Failed to check for updates'
-        });
+        res.status(500).json({ error: 'Failed to check for updates' });
     }
 });
 
-// ──────────────────────────────────────────────
 // GET /api/version/latest
-// Get the latest version info directly
-// ──────────────────────────────────────────────
 router.get('/latest', async (req, res) => {
     try {
-        const latestVersion = await AppVersion.findOne({
-            isActive: true
-        }).sort({ versionCode: -1 });
+        const latestVersion = await AppVersion.findOne({ isActive: true })
+            .sort({ versionCode: -1 });
 
         if (!latestVersion) {
-            return res.status(404).json({
-                error: 'No versions available'
-            });
+            return res.status(404).json({ error: 'No versions available' });
         }
 
         res.json({
@@ -104,16 +91,11 @@ router.get('/latest', async (req, res) => {
 
     } catch (error) {
         console.error('Get latest error:', error);
-        res.status(500).json({
-            error: 'Failed to fetch latest version'
-        });
+        res.status(500).json({ error: 'Failed to fetch latest version' });
     }
 });
 
-// ──────────────────────────────────────────────
 // POST /api/version/upload
-// Upload new APK with version info
-// ──────────────────────────────────────────────
 router.post('/upload', upload.single('apk'), async (req, res) => {
     try {
         if (!req.file) {
@@ -123,18 +105,20 @@ router.post('/upload', upload.single('apk'), async (req, res) => {
         const { versionCode, versionName, updateMessage, releaseNotes, isForceUpdate } = req.body;
 
         if (!versionCode || !versionName) {
+            if (req.file && fs.existsSync(req.file.path)) {
+                fs.unlinkSync(req.file.path);
+            }
             return res.status(400).json({ error: 'versionCode and versionName are required' });
         }
 
-        // Check if version already exists
         const existingVersion = await AppVersion.findOne({ versionCode: parseInt(versionCode) });
+
         if (existingVersion) {
-            // Delete old APK file
             const oldFilePath = path.join(__dirname, '..', existingVersion.apkFilePath);
             if (fs.existsSync(oldFilePath)) {
                 fs.unlinkSync(oldFilePath);
             }
-            // Update existing version
+
             existingVersion.versionName = versionName;
             existingVersion.apkFileName = req.file.filename;
             existingVersion.apkFilePath = req.file.path;
@@ -153,7 +137,6 @@ router.post('/upload', upload.single('apk'), async (req, res) => {
             });
         }
 
-        // Create new version
         const appVersion = new AppVersion({
             versionCode: parseInt(versionCode),
             versionName: versionName,
@@ -176,20 +159,14 @@ router.post('/upload', upload.single('apk'), async (req, res) => {
 
     } catch (error) {
         console.error('Upload error:', error);
-        // Clean up uploaded file on error
         if (req.file && fs.existsSync(req.file.path)) {
             fs.unlinkSync(req.file.path);
         }
-        res.status(500).json({
-            error: 'Failed to upload APK'
-        });
+        res.status(500).json({ error: 'Failed to upload APK: ' + error.message });
     }
 });
 
-// ──────────────────────────────────────────────
 // GET /api/version/all
-// Get all versions (admin use)
-// ──────────────────────────────────────────────
 router.get('/all', async (req, res) => {
     try {
         const versions = await AppVersion.find().sort({ versionCode: -1 });
@@ -199,19 +176,17 @@ router.get('/all', async (req, res) => {
     }
 });
 
-// ──────────────────────────────────────────────
 // DELETE /api/version/:versionCode
-// Delete a version
-// ──────────────────────────────────────────────
 router.delete('/:versionCode', async (req, res) => {
     try {
-        const version = await AppVersion.findOne({ versionCode: parseInt(req.params.versionCode) });
+        const version = await AppVersion.findOne({ 
+            versionCode: parseInt(req.params.versionCode) 
+        });
 
         if (!version) {
             return res.status(404).json({ error: 'Version not found' });
         }
 
-        // Delete APK file
         const filePath = path.join(__dirname, '..', version.apkFilePath);
         if (fs.existsSync(filePath)) {
             fs.unlinkSync(filePath);
@@ -226,13 +201,12 @@ router.delete('/:versionCode', async (req, res) => {
     }
 });
 
-// ──────────────────────────────────────────────
 // PUT /api/version/:versionCode/toggle
-// Activate/Deactivate a version
-// ──────────────────────────────────────────────
 router.put('/:versionCode/toggle', async (req, res) => {
     try {
-        const version = await AppVersion.findOne({ versionCode: parseInt(req.params.versionCode) });
+        const version = await AppVersion.findOne({ 
+            versionCode: parseInt(req.params.versionCode) 
+        });
 
         if (!version) {
             return res.status(404).json({ error: 'Version not found' });
