@@ -5,434 +5,129 @@
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
     <title>In-App Update Manager</title>
     <style>
-        * {
-            margin: 0;
-            padding: 0;
-            box-sizing: border-box;
-        }
-
+        * { margin: 0; padding: 0; box-sizing: border-box; }
         body {
             font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif;
             background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
-            min-height: 100vh;
-            padding: 20px;
+            min-height: 100vh; padding: 20px;
         }
-
-        .container {
-            max-width: 900px;
-            margin: 0 auto;
-        }
-
-        .header {
-            text-align: center;
-            color: white;
-            margin-bottom: 30px;
-        }
-
-        .header h1 {
-            font-size: 36px;
-            margin-bottom: 8px;
-            text-shadow: 2px 2px 4px rgba(0,0,0,0.2);
-        }
-
-        .header p {
-            font-size: 16px;
-            opacity: 0.9;
-        }
-
+        .container { max-width: 900px; margin: 0 auto; }
+        .header { text-align: center; color: white; margin-bottom: 30px; }
+        .header h1 { font-size: 32px; margin-bottom: 8px; }
+        .header p { font-size: 16px; opacity: 0.9; }
         .card {
-            background: white;
-            border-radius: 16px;
-            padding: 30px;
-            margin-bottom: 24px;
-            box-shadow: 0 10px 30px rgba(0,0,0,0.2);
+            background: white; border-radius: 16px; padding: 30px;
+            margin-bottom: 24px; box-shadow: 0 10px 30px rgba(0,0,0,0.2);
         }
-
-        .card h2 {
-            color: #333;
-            margin-bottom: 20px;
-            font-size: 24px;
-            border-bottom: 2px solid #667eea;
-            padding-bottom: 10px;
+        .card h2 { color: #333; margin-bottom: 20px; font-size: 22px; border-bottom: 2px solid #667eea; padding-bottom: 10px; }
+        .form-group { margin-bottom: 16px; }
+        .form-group label { display: block; font-weight: 600; color: #555; margin-bottom: 6px; font-size: 14px; }
+        .form-group input[type="text"], .form-group input[type="number"], .form-group textarea, .form-group select {
+            width: 100%; padding: 12px 16px; border: 2px solid #e0e0e0;
+            border-radius: 8px; font-size: 15px; font-family: inherit;
         }
-
-        .form-group {
-            margin-bottom: 18px;
-        }
-
-        .form-group label {
-            display: block;
-            font-weight: 600;
-            color: #555;
-            margin-bottom: 6px;
-            font-size: 14px;
-        }
-
-        .form-group input[type="text"],
-        .form-group input[type="number"],
-        .form-group textarea,
-        .form-group select {
-            width: 100%;
-            padding: 12px 16px;
-            border: 2px solid #e0e0e0;
-            border-radius: 8px;
-            font-size: 15px;
-            transition: border-color 0.3s;
-            font-family: inherit;
-        }
-
-        .form-group input:focus,
-        .form-group textarea:focus,
-        .form-group select:focus {
-            outline: none;
-            border-color: #667eea;
-        }
-
-        .form-group textarea {
-            resize: vertical;
-            min-height: 80px;
-        }
-
+        .form-group input:focus, .form-group textarea:focus { outline: none; border-color: #667eea; }
+        .form-group textarea { resize: vertical; min-height: 80px; }
         .file-upload-area {
-            border: 3px dashed #667eea;
-            border-radius: 12px;
-            padding: 40px;
-            text-align: center;
-            cursor: pointer;
-            transition: all 0.3s;
-            background: #f8f9ff;
+            border: 3px dashed #667eea; border-radius: 12px; padding: 40px;
+            text-align: center; cursor: pointer; background: #f8f9ff;
         }
-
-        .file-upload-area:hover {
-            background: #eef0ff;
-            border-color: #764ba2;
-        }
-
-        .file-upload-area.drag-over {
-            background: #e8eaff;
-            border-color: #764ba2;
-            transform: scale(1.02);
-        }
-
-        .file-upload-icon {
-            font-size: 48px;
-            margin-bottom: 12px;
-        }
-
-        .file-upload-text {
-            color: #666;
-            font-size: 16px;
-        }
-
-        .file-upload-text .browse {
-            color: #667eea;
-            font-weight: 600;
-            text-decoration: underline;
-        }
-
-        .file-name {
-            margin-top: 12px;
-            padding: 10px;
-            background: #e8f5e9;
-            border-radius: 6px;
-            color: #2e7d32;
-            font-weight: 500;
-            display: none;
-        }
-
-        .file-name.show {
-            display: block;
-        }
-
+        .file-upload-area:hover { background: #eef0ff; border-color: #764ba2; }
+        .file-upload-icon { font-size: 48px; margin-bottom: 12px; }
+        .file-upload-text { color: #666; font-size: 16px; }
+        .file-upload-text .browse { color: #667eea; font-weight: 600; text-decoration: underline; }
+        .file-name { margin-top: 12px; padding: 10px; background: #e8f5e9; border-radius: 6px; color: #2e7d32; font-weight: 500; display: none; }
+        .file-name.show { display: block; }
         .btn {
-            padding: 14px 28px;
-            border: none;
-            border-radius: 8px;
-            font-size: 16px;
-            font-weight: 600;
-            cursor: pointer;
-            transition: all 0.3s;
-            display: inline-flex;
-            align-items: center;
-            gap: 8px;
+            padding: 14px 28px; border: none; border-radius: 8px; font-size: 16px;
+            font-weight: 600; cursor: pointer; display: inline-flex; align-items: center; gap: 8px;
         }
-
-        .btn-primary {
-            background: linear-gradient(135deg, #667eea, #764ba2);
-            color: white;
-            width: 100%;
-            justify-content: center;
-        }
-
-        .btn-primary:hover {
-            transform: translateY(-2px);
-            box-shadow: 0 8px 20px rgba(102, 126, 234, 0.4);
-        }
-
-        .btn-primary:disabled {
-            opacity: 0.5;
-            cursor: not-allowed;
-            transform: none;
-        }
-
-        .btn-sm {
-            padding: 8px 16px;
-            font-size: 13px;
-            border-radius: 6px;
-        }
-
-        .btn-success {
-            background: #4caf50;
-            color: white;
-        }
-
-        .btn-danger {
-            background: #f44336;
-            color: white;
-        }
-
-        .btn-warning {
-            background: #ff9800;
-            color: white;
-        }
-
-        .btn-info {
-            background: #2196f3;
-            color: white;
-        }
-
-        .progress-bar {
-            width: 100%;
-            height: 8px;
-            background: #e0e0e0;
-            border-radius: 4px;
-            margin-top: 12px;
-            overflow: hidden;
-            display: none;
-        }
-
-        .progress-bar.show {
-            display: block;
-        }
-
-        .progress-fill {
-            height: 100%;
-            background: linear-gradient(135deg, #667eea, #764ba2);
-            border-radius: 4px;
-            transition: width 0.3s;
-            width: 0%;
-        }
-
-        .status-message {
-            padding: 14px;
-            border-radius: 8px;
-            margin-top: 16px;
-            display: none;
-            font-weight: 500;
-        }
-
-        .status-message.success {
-            display: block;
-            background: #e8f5e9;
-            color: #2e7d32;
-            border: 1px solid #a5d6a7;
-        }
-
-        .status-message.error {
-            display: block;
-            background: #fbe9e7;
-            color: #c62828;
-            border: 1px solid #ef9a9a;
-        }
-
-        .status-message.info {
-            display: block;
-            background: #e3f2fd;
-            color: #1565c0;
-            border: 1px solid #90caf9;
-        }
-
-        table {
-            width: 100%;
-            border-collapse: collapse;
-            margin-top: 12px;
-        }
-
-        table th,
-        table td {
-            padding: 12px 16px;
-            text-align: left;
-            border-bottom: 1px solid #e0e0e0;
-        }
-
-        table th {
-            background: #f5f5f5;
-            font-weight: 600;
-            color: #555;
-            font-size: 13px;
-            text-transform: uppercase;
-            letter-spacing: 0.5px;
-        }
-
-        table tr:hover {
-            background: #fafafa;
-        }
-
-        .badge {
-            padding: 4px 10px;
-            border-radius: 12px;
-            font-size: 12px;
-            font-weight: 600;
-        }
-
-        .badge-active {
-            background: #e8f5e9;
-            color: #2e7d32;
-        }
-
-        .badge-inactive {
-            background: #ffebee;
-            color: #c62828;
-        }
-
-        .badge-force {
-            background: #fff3e0;
-            color: #e65100;
-        }
-
-        .loading-spinner {
-            display: inline-block;
-            width: 20px;
-            height: 20px;
-            border: 3px solid rgba(255,255,255,0.3);
-            border-radius: 50%;
-            border-top-color: white;
-            animation: spin 0.8s linear infinite;
-        }
-
-        @keyframes spin {
-            to { transform: rotate(360deg); }
-        }
-
-        .empty-state {
-            text-align: center;
-            padding: 40px;
-            color: #999;
-        }
-
-        .empty-state .icon {
-            font-size: 48px;
-            margin-bottom: 12px;
-        }
-
-        .row {
-            display: flex;
-            gap: 16px;
-        }
-
-        .col {
-            flex: 1;
-        }
-
-        .checkbox-group {
-            display: flex;
-            align-items: center;
-            gap: 8px;
-            margin-top: 8px;
-        }
-
-        .checkbox-group input[type="checkbox"] {
-            width: 20px;
-            height: 20px;
-            accent-color: #667eea;
-        }
-
-        @media (max-width: 600px) {
-            .row {
-                flex-direction: column;
-            }
-            .header h1 {
-                font-size: 24px;
-            }
-            .card {
-                padding: 20px;
-            }
-        }
+        .btn-primary { background: linear-gradient(135deg, #667eea, #764ba2); color: white; width: 100%; justify-content: center; }
+        .btn-primary:hover { transform: translateY(-2px); box-shadow: 0 8px 20px rgba(102,126,234,0.4); }
+        .btn-primary:disabled { opacity: 0.5; cursor: not-allowed; transform: none; }
+        .btn-sm { padding: 8px 16px; font-size: 13px; border-radius: 6px; }
+        .btn-success { background: #4caf50; color: white; }
+        .btn-danger { background: #f44336; color: white; }
+        .btn-info { background: #2196f3; color: white; }
+        .progress-bar { width: 100%; height: 8px; background: #e0e0e0; border-radius: 4px; margin-top: 12px; overflow: hidden; display: none; }
+        .progress-bar.show { display: block; }
+        .progress-fill { height: 100%; background: linear-gradient(135deg, #667eea, #764ba2); border-radius: 4px; width: 0%; }
+        .status-message { padding: 14px; border-radius: 8px; margin-top: 16px; display: none; font-weight: 500; }
+        .status-message.success { display: block; background: #e8f5e9; color: #2e7d32; border: 1px solid #a5d6a7; }
+        .status-message.error { display: block; background: #fbe9e7; color: #c62828; border: 1px solid #ef9a9a; }
+        table { width: 100%; border-collapse: collapse; margin-top: 12px; }
+        table th, table td { padding: 12px 16px; text-align: left; border-bottom: 1px solid #e0e0e0; }
+        table th { background: #f5f5f5; font-weight: 600; color: #555; font-size: 13px; }
+        table tr:hover { background: #fafafa; }
+        .badge { padding: 4px 10px; border-radius: 12px; font-size: 12px; font-weight: 600; }
+        .badge-active { background: #e8f5e9; color: #2e7d32; }
+        .badge-inactive { background: #ffebee; color: #c62828; }
+        .badge-force { background: #fff3e0; color: #e65100; }
+        .loading-spinner { display: inline-block; width: 20px; height: 20px; border: 3px solid rgba(255,255,255,0.3); border-radius: 50%; border-top-color: white; animation: spin 0.8s linear infinite; }
+        @keyframes spin { to { transform: rotate(360deg); } }
+        .empty-state { text-align: center; padding: 40px; color: #999; }
+        .row { display: flex; gap: 16px; }
+        .col { flex: 1; }
+        .checkbox-group { display: flex; align-items: center; gap: 8px; margin-top: 8px; }
+        .checkbox-group input[type="checkbox"] { width: 20px; height: 20px; accent-color: #667eea; }
+        @media (max-width: 600px) { .row { flex-direction: column; } .header h1 { font-size: 24px; } .card { padding: 20px; } }
     </style>
 </head>
 <body>
     <div class="container">
-        <!-- Header -->
         <div class="header">
             <h1>📱 In-App Update Manager</h1>
             <p>Upload APK files and manage app versions</p>
         </div>
 
-        <!-- Upload Card -->
         <div class="card">
             <h2>🚀 Upload New Version</h2>
-            
             <form id="uploadForm">
                 <div class="row">
                     <div class="col">
                         <div class="form-group">
                             <label>Version Code (Integer)</label>
-                            <input type="number" id="versionCode" 
-                                   placeholder="e.g., 2" required min="1">
+                            <input type="number" id="versionCode" placeholder="e.g., 2" required min="1">
                         </div>
                     </div>
                     <div class="col">
                         <div class="form-group">
                             <label>Version Name</label>
-                            <input type="text" id="versionName" 
-                                   placeholder="e.g., 1.1.0" required>
+                            <input type="text" id="versionName" placeholder="e.g., 1.1.0" required>
                         </div>
                     </div>
                 </div>
 
                 <div class="form-group">
                     <label>Update Message</label>
-                    <input type="text" id="updateMessage" 
-                           placeholder="e.g., New features and bug fixes!"
-                           value="A new version is available! Please update your app.">
+                    <input type="text" id="updateMessage" value="A new version is available! Please update your app.">
                 </div>
 
                 <div class="form-group">
                     <label>Release Notes</label>
-                    <textarea id="releaseNotes" 
-                              placeholder="- Fixed login bug&#10;- Improved performance&#10;- Added dark mode"></textarea>
+                    <textarea id="releaseNotes" placeholder="- Fixed bugs&#10;- New features"></textarea>
                 </div>
 
                 <div class="checkbox-group">
                     <input type="checkbox" id="isForceUpdate">
-                    <label for="isForceUpdate" style="display:inline;font-weight:600;color:#555;">
-                        Force Update (User cannot skip)
-                    </label>
+                    <label for="isForceUpdate" style="display:inline;font-weight:600;color:#555;">Force Update</label>
                 </div>
 
-                <!-- File Upload Area -->
                 <div class="form-group" style="margin-top:18px;">
                     <label>APK File</label>
                     <div class="file-upload-area" id="dropZone">
                         <div class="file-upload-icon">📦</div>
-                        <div class="file-upload-text">
-                            Drag & drop APK file here or <span class="browse">browse</span>
-                        </div>
-                        <input type="file" id="apkFile" accept=".apk" 
-                               style="display:none;" required>
+                        <div class="file-upload-text">Drag & drop APK or <span class="browse">browse</span></div>
+                        <input type="file" id="apkFile" accept=".apk" style="display:none;" required>
                     </div>
                     <div class="file-name" id="fileNameDisplay"></div>
                 </div>
 
-                <!-- Progress Bar -->
                 <div class="progress-bar" id="progressBar">
                     <div class="progress-fill" id="progressFill"></div>
                 </div>
-
-                <!-- Status Message -->
                 <div class="status-message" id="statusMessage"></div>
 
-                <!-- Submit Button -->
                 <button type="submit" class="btn btn-primary" id="submitBtn" style="margin-top:18px;">
                     <span id="btnText">📤 Upload & Publish</span>
                     <span id="btnSpinner" class="loading-spinner" style="display:none;"></span>
@@ -440,29 +135,19 @@
             </form>
         </div>
 
-        <!-- Versions List Card -->
         <div class="card">
             <h2>📋 All Versions</h2>
-            <button class="btn btn-info btn-sm" onclick="loadVersions()" style="margin-bottom:16px;">
-                🔄 Refresh List
-            </button>
+            <button class="btn btn-info btn-sm" onclick="loadVersions()" style="margin-bottom:16px;">🔄 Refresh</button>
             <div id="versionsList">
-                <div class="empty-state">
-                    <div class="icon">📭</div>
-                    <p>Loading versions...</p>
-                </div>
+                <div class="empty-state"><p>Loading...</p></div>
             </div>
         </div>
     </div>
 
     <script>
-        // 🔧 CONFIGURATION
-        const API_BASE_URL = 'https://required-lesly-school1660440-97f86428.koyeb.app/api/version';
-        // Replace with your actual Koyeb app URL
+        const API_BASE_URL = window.location.origin + '/api/version';
+        console.log('📡 API URL:', API_BASE_URL);
 
-        // ──────────────────────────────────────────
-        // DOM Elements
-        // ──────────────────────────────────────────
         const dropZone = document.getElementById('dropZone');
         const fileInput = document.getElementById('apkFile');
         const fileNameDisplay = document.getElementById('fileNameDisplay');
@@ -474,172 +159,48 @@
         const btnText = document.getElementById('btnText');
         const btnSpinner = document.getElementById('btnSpinner');
 
-        // ──────────────────────────────────────────
-        // File Drop & Browse
-        // ──────────────────────────────────────────
         dropZone.addEventListener('click', () => fileInput.click());
-
-        dropZone.addEventListener('dragover', (e) => {
-            e.preventDefault();
-            dropZone.classList.add('drag-over');
-        });
-
-        dropZone.addEventListener('dragleave', () => {
-            dropZone.classList.remove('drag-over');
-        });
-
+        dropZone.addEventListener('dragover', (e) => { e.preventDefault(); dropZone.classList.add('drag-over'); });
+        dropZone.addEventListener('dragleave', () => { dropZone.classList.remove('drag-over'); });
         dropZone.addEventListener('drop', (e) => {
             e.preventDefault();
             dropZone.classList.remove('drag-over');
-            const files = e.dataTransfer.files;
-            if (files.length > 0) {
-                handleFile(files[0]);
-            }
+            if (e.dataTransfer.files.length > 0) handleFile(e.dataTransfer.files[0]);
         });
-
         fileInput.addEventListener('change', () => {
-            if (fileInput.files.length > 0) {
-                handleFile(fileInput.files[0]);
-            }
+            if (fileInput.files.length > 0) handleFile(fileInput.files[0]);
         });
 
         function handleFile(file) {
-            // Validate APK extension
             if (!file.name.toLowerCase().endsWith('.apk')) {
                 showStatus('Please select a valid .apk file', 'error');
                 return;
             }
-
-            // Validate file size (100MB max)
             const maxSize = 100 * 1024 * 1024;
             if (file.size > maxSize) {
                 showStatus('File size exceeds 100MB limit', 'error');
                 return;
             }
-
-            // Show file info
             const fileSizeMB = (file.size / (1024 * 1024)).toFixed(2);
-            fileNameDisplay.innerHTML = `
-                ✅ <strong>${file.name}</strong> — ${fileSizeMB} MB
-            `;
+            fileNameDisplay.innerHTML = `✅ <strong>${file.name}</strong> — ${fileSizeMB} MB`;
             fileNameDisplay.classList.add('show');
         }
 
-        function showStatus(message, type) {
-            statusMessage.textContent = message;
+        function showStatus(msg, type) {
+            statusMessage.textContent = msg;
             statusMessage.className = 'status-message ' + type;
-            // Auto-hide success messages after 5 seconds
-            if (type === 'success') {
-                setTimeout(() => {
-                    statusMessage.className = 'status-message';
-                }, 5000);
-            }
+            if (type === 'success') setTimeout(() => { statusMessage.className = 'status-message'; }, 5000);
         }
 
-        // ──────────────────────────────────────────
-        // Upload Form Submit
-        // ──────────────────────────────────────────
-        uploadForm.addEventListener('submit', async (e) => {
-            e.preventDefault();
-
-            // Get form values
-            const versionCode = document.getElementById('versionCode').value.trim();
-            const versionName = document.getElementById('versionName').value.trim();
-            const updateMessage = document.getElementById('updateMessage').value.trim();
-            const releaseNotes = document.getElementById('releaseNotes').value.trim();
-            const isForceUpdate = document.getElementById('isForceUpdate').checked;
-            const apkFile = fileInput.files[0];
-
-            // Validation
-            if (!apkFile) {
-                showStatus('Please select an APK file', 'error');
-                return;
-            }
-
-            if (!versionCode || isNaN(versionCode) || parseInt(versionCode) < 1) {
-                showStatus('Please enter a valid version code', 'error');
-                return;
-            }
-
-            if (!versionName) {
-                showStatus('Please enter a version name', 'error');
-                return;
-            }
-
-            // Disable button & show progress
-            setUploading(true);
-
-            // Build FormData
-            const formData = new FormData();
-            formData.append('apk', apkFile);
-            formData.append('versionCode', versionCode);
-            formData.append('versionName', versionName);
-            formData.append('updateMessage', updateMessage || 'A new version is available!');
-            formData.append('releaseNotes', releaseNotes || '');
-            formData.append('isForceUpdate', isForceUpdate);
-
-            try {
-                // Upload with progress tracking
-                const xhr = new XMLHttpRequest();
-
-                xhr.upload.addEventListener('progress', (e) => {
-                    if (e.lengthComputable) {
-                        const percent = Math.round((e.loaded / e.total) * 100);
-                        progressFill.style.width = percent + '%';
-                    }
-                });
-
-                xhr.addEventListener('load', () => {
-                    setUploading(false);
-                    
-                    if (xhr.status === 200 || xhr.status === 201) {
-                        const response = JSON.parse(xhr.responseText);
-                        showStatus(
-                            `✅ Version ${versionName} (code: ${versionCode}) uploaded successfully!`,
-                            'success'
-                        );
-                        resetForm();
-                        loadVersions(); // Refresh list
-                    } else {
-                        let errorMsg = 'Upload failed';
-                        try {
-                            const error = JSON.parse(xhr.responseText);
-                            errorMsg = error.error || errorMsg;
-                        } catch (ex) {}
-                        showStatus('❌ ' + errorMsg, 'error');
-                    }
-                });
-
-                xhr.addEventListener('error', () => {
-                    setUploading(false);
-                    showStatus('❌ Network error. Please check your connection.', 'error');
-                });
-
-                xhr.open('POST', API_BASE_URL + '/upload');
-                xhr.send(formData);
-
-            } catch (error) {
-                setUploading(false);
-                showStatus('❌ ' + error.message, 'error');
-            }
-        });
-
-        function setUploading(isUploading) {
-            if (isUploading) {
-                submitBtn.disabled = true;
-                btnText.style.display = 'none';
-                btnSpinner.style.display = 'inline-block';
-                progressBar.classList.add('show');
-                progressFill.style.width = '0%';
-                statusMessage.className = 'status-message';
+        function setUploading(uploading) {
+            if (uploading) {
+                submitBtn.disabled = true; btnText.style.display = 'none';
+                btnSpinner.style.display = 'inline-block'; progressBar.classList.add('show');
+                progressFill.style.width = '0%'; statusMessage.className = 'status-message';
             } else {
-                submitBtn.disabled = false;
-                btnText.style.display = 'inline';
+                submitBtn.disabled = false; btnText.style.display = 'inline';
                 btnSpinner.style.display = 'none';
-                setTimeout(() => {
-                    progressBar.classList.remove('show');
-                    progressFill.style.width = '0%';
-                }, 1000);
+                setTimeout(() => { progressBar.classList.remove('show'); progressFill.style.width = '0%'; }, 1000);
             }
         }
 
@@ -653,195 +214,100 @@
             fileNameDisplay.classList.remove('show');
         }
 
-        // ──────────────────────────────────────────
-        // Load All Versions
-        // ──────────────────────────────────────────
+        uploadForm.addEventListener('submit', (e) => {
+            e.preventDefault();
+
+            const versionCode = document.getElementById('versionCode').value.trim();
+            const versionName = document.getElementById('versionName').value.trim();
+            const updateMessage = document.getElementById('updateMessage').value.trim();
+            const releaseNotes = document.getElementById('releaseNotes').value.trim();
+            const isForceUpdate = document.getElementById('isForceUpdate').checked;
+            const apkFile = fileInput.files[0];
+
+            if (!apkFile) { showStatus('Please select an APK file', 'error'); return; }
+            if (!versionCode || isNaN(versionCode)) { showStatus('Enter valid version code', 'error'); return; }
+            if (!versionName) { showStatus('Enter version name', 'error'); return; }
+
+            setUploading(true);
+
+            const formData = new FormData();
+            formData.append('apk', apkFile);
+            formData.append('versionCode', versionCode);
+            formData.append('versionName', versionName);
+            formData.append('updateMessage', updateMessage);
+            formData.append('releaseNotes', releaseNotes);
+            formData.append('isForceUpdate', isForceUpdate);
+
+            const xhr = new XMLHttpRequest();
+            xhr.upload.addEventListener('progress', (ev) => {
+                if (ev.lengthComputable) progressFill.style.width = Math.round((ev.loaded / ev.total) * 100) + '%';
+            });
+            xhr.addEventListener('load', () => {
+                setUploading(false);
+                if (xhr.status === 200 || xhr.status === 201) {
+                    try {
+                        JSON.parse(xhr.responseText);
+                        showStatus('✅ Upload successful!', 'success');
+                        resetForm(); loadVersions();
+                    } catch (ex) { showStatus('❌ Invalid response', 'error'); }
+                } else {
+                    let msg = 'Upload failed';
+                    try { msg = JSON.parse(xhr.responseText).error || msg; } catch(ex) {}
+                    showStatus('❌ ' + msg, 'error');
+                }
+            });
+            xhr.addEventListener('error', () => {
+                setUploading(false);
+                showStatus('❌ Network error. Check console (F12).', 'error');
+            });
+            xhr.open('POST', API_BASE_URL + '/upload');
+            xhr.send(formData);
+        });
+
         async function loadVersions() {
-            const versionsList = document.getElementById('versionsList');
-            versionsList.innerHTML = `
-                <div class="empty-state">
-                    <div class="icon">⏳</div>
-                    <p>Loading versions...</p>
-                </div>
-            `;
-
+            const list = document.getElementById('versionsList');
+            list.innerHTML = '<div class="empty-state"><p>Loading...</p></div>';
             try {
-                const response = await fetch(API_BASE_URL + '/all');
-                
-                if (!response.ok) {
-                    throw new Error('Failed to fetch versions');
-                }
-
-                const versions = await response.json();
-
-                if (!versions || versions.length === 0) {
-                    versionsList.innerHTML = `
-                        <div class="empty-state">
-                            <div class="icon">📭</div>
-                            <p>No versions uploaded yet</p>
-                        </div>
-                    `;
-                    return;
-                }
-
-                // Build table
-                let html = `
-                    <table>
-                        <thead>
-                            <tr>
-                                <th>Version Code</th>
-                                <th>Version Name</th>
-                                <th>Status</th>
-                                <th>Force</th>
-                                <th>Size</th>
-                                <th>Uploaded</th>
-                                <th>Actions</th>
-                            </tr>
-                        </thead>
-                        <tbody>
-                `;
-
+                const res = await fetch(API_BASE_URL + '/all');
+                const versions = await res.json();
+                if (!versions.length) { list.innerHTML = '<div class="empty-state"><p>No versions yet</p></div>'; return; }
+                let html = `<table><thead><tr><th>Code</th><th>Name</th><th>Status</th><th>Force</th><th>Size</th><th>Date</th><th>Actions</th></tr></thead><tbody>`;
                 versions.forEach(v => {
-                    const fileSizeMB = (v.fileSize / (1024 * 1024)).toFixed(2);
-                    const createdDate = new Date(v.createdAt).toLocaleDateString('en-US', {
-                        year: 'numeric',
-                        month: 'short',
-                        day: 'numeric',
-                        hour: '2-digit',
-                        minute: '2-digit'
-                    });
-
-                    html += `
-                        <tr>
-                            <td><strong>${v.versionCode}</strong></td>
-                            <td>${v.versionName}</td>
-                            <td>
-                                <span class="badge ${v.isActive ? 'badge-active' : 'badge-inactive'}">
-                                    ${v.isActive ? 'Active' : 'Inactive'}
-                                </span>
-                            </td>
-                            <td>
-                                ${v.isForceUpdate ? '<span class="badge badge-force">Force</span>' : '—'}
-                            </td>
-                            <td>${fileSizeMB} MB</td>
-                            <td>${createdDate}</td>
-                            <td>
-                                <button class="btn btn-sm btn-success" 
-                                        onclick="toggleVersion(${v.versionCode})" 
-                                        title="Activate/Deactivate">
-                                    ${v.isActive ? '⏸' : '▶'}
-                                </button>
-                                <button class="btn btn-sm btn-danger" 
-                                        onclick="deleteVersion(${v.versionCode})"
-                                        title="Delete">
-                                    🗑
-                                </button>
-                                ${v.apkUrl ? `<button class="btn btn-sm btn-info" 
-                                        onclick="copyUrl('${v.apkUrl}')"
-                                        title="Copy APK URL">
-                                    📋
-                                </button>` : ''}
-                            </td>
-                        </tr>
-                    `;
+                    const size = (v.fileSize / 1024 / 1024).toFixed(2);
+                    const date = new Date(v.createdAt).toLocaleDateString();
+                    html += `<tr>
+                        <td><strong>${v.versionCode}</strong></td><td>${v.versionName}</td>
+                        <td><span class="badge ${v.isActive ? 'badge-active' : 'badge-inactive'}">${v.isActive ? 'Active' : 'Inactive'}</span></td>
+                        <td>${v.isForceUpdate ? '<span class="badge badge-force">Force</span>' : '—'}</td>
+                        <td>${size} MB</td><td>${date}</td>
+                        <td>
+                            <button class="btn btn-sm btn-success" onclick="toggleVersion(${v.versionCode})">${v.isActive ? '⏸' : '▶'}</button>
+                            <button class="btn btn-sm btn-danger" onclick="deleteVersion(${v.versionCode})">🗑</button>
+                            ${v.apkUrl ? `<button class="btn btn-sm btn-info" onclick="navigator.clipboard.writeText('${v.apkUrl}')">📋</button>` : ''}
+                        </td></tr>`;
                 });
-
                 html += '</tbody></table>';
-                versionsList.innerHTML = html;
-
-            } catch (error) {
-                versionsList.innerHTML = `
-                    <div class="empty-state">
-                        <div class="icon">❌</div>
-                        <p>Error loading versions: ${error.message}</p>
-                    </div>
-                `;
-            }
+                list.innerHTML = html;
+            } catch (err) { list.innerHTML = '<div class="empty-state"><p>Error loading</p></div>'; }
         }
 
-        // ──────────────────────────────────────────
-        // Toggle Version Active/Inactive
-        // ──────────────────────────────────────────
-        async function toggleVersion(versionCode) {
-            if (!confirm(`Toggle active status for version ${versionCode}?`)) return;
-
+        async function toggleVersion(code) {
+            if (!confirm('Toggle version ' + code + '?')) return;
             try {
-                const response = await fetch(
-                    API_BASE_URL + '/' + versionCode + '/toggle',
-                    { method: 'PUT' }
-                );
-
-                if (response.ok) {
-                    const data = await response.json();
-                    showStatus(data.message, 'success');
-                    loadVersions();
-                } else {
-                    const error = await response.json();
-                    showStatus('Error: ' + (error.error || 'Failed'), 'error');
-                }
-            } catch (error) {
-                showStatus('Network error: ' + error.message, 'error');
-            }
+                await fetch(API_BASE_URL + '/' + code + '/toggle', { method: 'PUT' });
+                loadVersions();
+            } catch (err) { showStatus('Error toggling', 'error'); }
         }
 
-        // ──────────────────────────────────────────
-        // Delete Version
-        // ──────────────────────────────────────────
-        async function deleteVersion(versionCode) {
-            if (!confirm(`Are you sure you want to delete version ${versionCode}? This cannot be undone.`)) return;
-
+        async function deleteVersion(code) {
+            if (!confirm('Delete version ' + code + '? This cannot be undone!')) return;
             try {
-                const response = await fetch(
-                    API_BASE_URL + '/' + versionCode,
-                    { method: 'DELETE' }
-                );
-
-                if (response.ok) {
-                    showStatus('Version ' + versionCode + ' deleted successfully', 'success');
-                    loadVersions();
-                } else {
-                    const error = await response.json();
-                    showStatus('Error: ' + (error.error || 'Failed'), 'error');
-                }
-            } catch (error) {
-                showStatus('Network error: ' + error.message, 'error');
-            }
+                await fetch(API_BASE_URL + '/' + code, { method: 'DELETE' });
+                showStatus('Deleted!', 'success');
+                loadVersions();
+            } catch (err) { showStatus('Error deleting', 'error'); }
         }
 
-        // ──────────────────────────────────────────
-        // Copy APK URL to Clipboard
-        // ──────────────────────────────────────────
-        function copyUrl(url) {
-            if (navigator.clipboard) {
-                navigator.clipboard.writeText(url).then(() => {
-                    showStatus('📋 URL copied to clipboard!', 'success');
-                }).catch(() => {
-                    fallbackCopy(url);
-                });
-            } else {
-                fallbackCopy(url);
-            }
-        }
-
-        function fallbackCopy(text) {
-            const textarea = document.createElement('textarea');
-            textarea.value = text;
-            textarea.style.position = 'fixed';
-            textarea.style.left = '-9999px';
-            document.body.appendChild(textarea);
-            textarea.select();
-            try {
-                document.execCommand('copy');
-                showStatus('📋 URL copied to clipboard!', 'success');
-            } catch (err) {
-                showStatus('Failed to copy URL', 'error');
-            }
-            document.body.removeChild(textarea);
-        }
-
-        // ──────────────────────────────────────────
-        // Initial Load
-        // ──────────────────────────────────────────
         loadVersions();
     </script>
 </body>
