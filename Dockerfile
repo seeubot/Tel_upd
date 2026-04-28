@@ -9,14 +9,14 @@ WORKDIR /usr/src/app
 # Copy package files
 COPY package*.json ./
 
-# Install dependencies
-RUN npm ci --only=production
+# Install dependencies (npm install instead of npm ci)
+RUN npm install --omit=dev
 
 # Copy app source
 COPY . .
 
-# Create uploads directory for APK files
-RUN mkdir -p uploads
+# Create uploads and public directories if they don't exist
+RUN mkdir -p uploads public
 
 # Expose port
 EXPOSE 3000
