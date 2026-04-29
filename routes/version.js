@@ -2,27 +2,17 @@ const express = require('express');
 const router = express.Router();
 const multer = require('multer');
 const path = require('path');
-const fs = require('fs');
+const mongoose = require('mongoose');
+const { GridFSBucket, ObjectId } = require('mongodb');
 const AppVersion = require('../models/AppVersion');
 
-// Configure multer for APK upload
-const storage = multer.diskStorage({
-    destination: function(req, file, cb) {
-        const uploadDir = path.join(__dirname, '..', 'uploads');
-        if (!fs.existsSync(uploadDir)) {
-            fs.mkdirSync(uploadDir, { recursive: true });
-        }
-        cb(null, uploadDir);
-    },
-    filename: function(req, file, cb) {
-        const uniqueSuffix = Date.now() + '-' + Math.round(Math.random() * 1E9);
-        cb(null, 'app-' + uniqueSuffix + '.apk');
-    }
-});
-
+// ──────────────────────────────────────────────
+// Multer - store in memory, then pipe to GridFS
+// No disk writes — safe for ephemeral hosts like Koyeb
+// ──────────────────────────────────────────────
 const upload = multer({
-    storage: storage,
-    fileFilter: function(req, file, cb) {
+    storage: multer.memoryStorage(),
+    fileFilter: function (req, file, cb) {
         if (path.extname(file.originalname).toLowerCase() !== '.apk') {
             return cb(new Error('Only .apk files are allowed'));
         }
@@ -33,7 +23,16 @@ const upload = multer({
     }
 });
 
+// ──────────────────────────────────────────────
+// GridFS helper
+// ──────────────────────────────────────────────
+function getBucket() {
+    return new GridFSBucket(mongoose.connection.db, { bucketName: 'apks' });
+}
+
+// ──────────────────────────────────────────────
 // GET /api/version/check?currentVersion=1
+// ──────────────────────────────────────────────
 router.get('/check', async (req, res) => {
     try {
         const currentVersion = parseInt(req.query.currentVersion) || 0;
@@ -68,7 +67,9 @@ router.get('/check', async (req, res) => {
     }
 });
 
+// ──────────────────────────────────────────────
 // GET /api/version/latest
+// ──────────────────────────────────────────────
 router.get('/latest', async (req, res) => {
     try {
         const latestVersion = await AppVersion.findOne({ isActive: true })
@@ -95,7 +96,54 @@ router.get('/latest', async (req, res) => {
     }
 });
 
+// ──────────────────────────────────────────────
+// GET /api/version/download/:gridfsId
+// Streams the APK directly from MongoDB GridFS.
+// The apkUrl stored in the DB points to this route.
+// ──────────────────────────────────────────────
+router.get('/download/:gridfsId', async (req, res) => {
+    try {
+        let fileId;
+        try {
+            fileId = new ObjectId(req.params.gridfsId);
+        } catch (e) {
+            return res.status(400).json({ error: 'Invalid file ID' });
+        }
+
+        const bucket = getBucket();
+
+        // Verify file exists
+        const files = await bucket.find({ _id: fileId }).toArray();
+        if (!files || files.length === 0) {
+            return res.status(404).json({ error: 'APK file not found' });
+        }
+
+        const file = files[0];
+
+        res.set('Content-Type', 'application/vnd.android.package-archive');
+        res.set('Content-Disposition', `attachment; filename="${file.filename}"`);
+        res.set('Content-Length', file.length);
+
+        const downloadStream = bucket.openDownloadStream(fileId);
+
+        downloadStream.on('error', (err) => {
+            console.error('GridFS stream error:', err);
+            if (!res.headersSent) {
+                res.status(500).json({ error: 'Error streaming APK file' });
+            }
+        });
+
+        downloadStream.pipe(res);
+
+    } catch (error) {
+        console.error('Download error:', error);
+        res.status(500).json({ error: 'Failed to download APK' });
+    }
+});
+
+// ──────────────────────────────────────────────
 // POST /api/version/upload
+// ──────────────────────────────────────────────
 router.post('/upload', upload.single('apk'), async (req, res) => {
     try {
         if (!req.file) {
@@ -105,24 +153,39 @@ router.post('/upload', upload.single('apk'), async (req, res) => {
         const { versionCode, versionName, updateMessage, releaseNotes, isForceUpdate } = req.body;
 
         if (!versionCode || !versionName) {
-            if (req.file && fs.existsSync(req.file.path)) {
-                fs.unlinkSync(req.file.path);
-            }
             return res.status(400).json({ error: 'versionCode and versionName are required' });
         }
+
+        const bucket = getBucket();
+        const uniqueName = 'app-' + Date.now() + '-' + Math.round(Math.random() * 1e9) + '.apk';
+
+        // Upload buffer to GridFS
+        const gridfsFileId = await new Promise((resolve, reject) => {
+            const uploadStream = bucket.openUploadStream(uniqueName, {
+                contentType: 'application/vnd.android.package-archive',
+                metadata: { versionCode, versionName }
+            });
+            uploadStream.on('error', reject);
+            uploadStream.on('finish', () => resolve(uploadStream.id));
+            uploadStream.end(req.file.buffer);
+        });
+
+        // APK is served via our /download route — permanent, no disk dependency
+        const apkUrl = `${req.protocol}://${req.get('host')}/api/version/download/${gridfsFileId}`;
 
         const existingVersion = await AppVersion.findOne({ versionCode: parseInt(versionCode) });
 
         if (existingVersion) {
-            const oldFilePath = path.join(__dirname, '..', existingVersion.apkFilePath);
-            if (fs.existsSync(oldFilePath)) {
-                fs.unlinkSync(oldFilePath);
+            // Delete old APK from GridFS
+            if (existingVersion.apkGridFsId) {
+                await bucket.delete(new ObjectId(existingVersion.apkGridFsId))
+                    .catch(err => console.error('Old GridFS file delete error:', err));
             }
 
             existingVersion.versionName = versionName;
-            existingVersion.apkFileName = req.file.filename;
-            existingVersion.apkFilePath = req.file.path;
-            existingVersion.apkUrl = `${req.protocol}://${req.get('host')}/uploads/${req.file.filename}`;
+            existingVersion.apkFileName = uniqueName;
+            existingVersion.apkGridFsId = gridfsFileId.toString();
+            existingVersion.apkUrl = apkUrl;
             existingVersion.updateMessage = updateMessage || existingVersion.updateMessage;
             existingVersion.releaseNotes = releaseNotes || '';
             existingVersion.fileSize = req.file.size;
@@ -140,9 +203,9 @@ router.post('/upload', upload.single('apk'), async (req, res) => {
         const appVersion = new AppVersion({
             versionCode: parseInt(versionCode),
             versionName: versionName,
-            apkFileName: req.file.filename,
-            apkFilePath: req.file.path,
-            apkUrl: `${req.protocol}://${req.get('host')}/uploads/${req.file.filename}`,
+            apkFileName: uniqueName,
+            apkGridFsId: gridfsFileId.toString(),
+            apkUrl: apkUrl,
             updateMessage: updateMessage || 'A new version is available!',
             releaseNotes: releaseNotes || '',
             fileSize: req.file.size,
@@ -159,14 +222,13 @@ router.post('/upload', upload.single('apk'), async (req, res) => {
 
     } catch (error) {
         console.error('Upload error:', error);
-        if (req.file && fs.existsSync(req.file.path)) {
-            fs.unlinkSync(req.file.path);
-        }
         res.status(500).json({ error: 'Failed to upload APK: ' + error.message });
     }
 });
 
+// ──────────────────────────────────────────────
 // GET /api/version/all
+// ──────────────────────────────────────────────
 router.get('/all', async (req, res) => {
     try {
         const versions = await AppVersion.find().sort({ versionCode: -1 });
@@ -176,20 +238,22 @@ router.get('/all', async (req, res) => {
     }
 });
 
+// ──────────────────────────────────────────────
 // DELETE /api/version/:versionCode
+// ──────────────────────────────────────────────
 router.delete('/:versionCode', async (req, res) => {
     try {
-        const version = await AppVersion.findOne({ 
-            versionCode: parseInt(req.params.versionCode) 
+        const version = await AppVersion.findOne({
+            versionCode: parseInt(req.params.versionCode)
         });
 
         if (!version) {
             return res.status(404).json({ error: 'Version not found' });
         }
 
-        const filePath = path.join(__dirname, '..', version.apkFilePath);
-        if (fs.existsSync(filePath)) {
-            fs.unlinkSync(filePath);
+        if (version.apkGridFsId) {
+            await getBucket().delete(new ObjectId(version.apkGridFsId))
+                .catch(err => console.error('GridFS delete error:', err));
         }
 
         await AppVersion.deleteOne({ versionCode: parseInt(req.params.versionCode) });
@@ -201,11 +265,13 @@ router.delete('/:versionCode', async (req, res) => {
     }
 });
 
+// ──────────────────────────────────────────────
 // PUT /api/version/:versionCode/toggle
+// ──────────────────────────────────────────────
 router.put('/:versionCode/toggle', async (req, res) => {
     try {
-        const version = await AppVersion.findOne({ 
-            versionCode: parseInt(req.params.versionCode) 
+        const version = await AppVersion.findOne({
+            versionCode: parseInt(req.params.versionCode)
         });
 
         if (!version) {
