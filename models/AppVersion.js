@@ -16,7 +16,11 @@ const appVersionSchema = new mongoose.Schema({
     },
     apkFilePath: {
         type: String,
-        required: true
+        default: ''        // No longer required — files stored in GridFS, not disk
+    },
+    apkGridFsId: {
+        type: String,
+        default: ''        // GridFS file ID — used to stream/delete the APK from MongoDB
     },
     apkUrl: {
         type: String,
