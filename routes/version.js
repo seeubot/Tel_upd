@@ -98,10 +98,8 @@ router.get('/latest', async (req, res) => {
 
 // ──────────────────────────────────────────────
 // GET /api/version/download/:gridfsId
-// Reads the full APK from GridFS into a buffer
-// then sends it in one go — prevents partial/
-// corrupted downloads that cause "problem parsing
-// the package" on Android.
+// Streams the APK directly from GridFS with proper
+// error handling and logging to diagnose truncation
 // ──────────────────────────────────────────────
 router.get('/download/:gridfsId', async (req, res) => {
     try {
@@ -114,7 +112,7 @@ router.get('/download/:gridfsId', async (req, res) => {
 
         const bucket = getBucket();
 
-        // Verify file exists
+        // Verify file exists and get metadata
         const files = await bucket.find({ _id: fileId }).toArray();
         if (!files || files.length === 0) {
             return res.status(404).json({ error: 'APK file not found' });
@@ -122,28 +120,52 @@ router.get('/download/:gridfsId', async (req, res) => {
 
         const file = files[0];
 
-        // Read the entire APK into a buffer first so we can set
-        // an accurate Content-Length — Android requires this to
-        // correctly write and verify the APK file on device.
-        const apkBuffer = await new Promise((resolve, reject) => {
-            const chunks = [];
-            const downloadStream = bucket.openDownloadStream(fileId);
-
-            downloadStream.on('data', (chunk) => chunks.push(chunk));
-            downloadStream.on('error', reject);
-            downloadStream.on('end', () => resolve(Buffer.concat(chunks)));
+        // Set headers from GridFS metadata
+        res.set({
+            'Content-Type': 'application/vnd.android.package-archive',
+            'Content-Disposition': `attachment; filename="${file.filename}"`,
+            'Content-Length': file.length,
+            'Cache-Control': 'no-cache, no-store, must-revalidate',
+            'Pragma': 'no-cache',
+            'Expires': '0',
+            'Accept-Ranges': 'bytes'
         });
 
-        res.set('Content-Type', 'application/vnd.android.package-archive');
-        res.set('Content-Disposition', `attachment; filename="${file.filename}"`);
-        res.set('Content-Length', apkBuffer.length);  // exact byte count
-        res.set('Cache-Control', 'no-cache');
+        // Stream the file directly from GridFS
+        const downloadStream = bucket.openDownloadStream(fileId);
+        
+        let bytesSent = 0;
 
-        res.send(apkBuffer);
+        downloadStream.on('data', (chunk) => {
+            bytesSent += chunk.length;
+        });
+
+        downloadStream.on('error', (error) => {
+            console.error('❌ Download stream error:', error);
+            if (!res.headersSent) {
+                res.status(500).json({ error: 'Download stream failed' });
+            }
+        });
+
+        downloadStream.on('end', () => {
+            console.log(`✅ APK sent: ${bytesSent} bytes (expected: ${file.length})`);
+        });
+
+        // Handle client disconnect
+        req.on('close', () => {
+            if (bytesSent < file.length) {
+                console.warn(`⚠️ Client disconnected after ${bytesSent}/${file.length} bytes`);
+            }
+            downloadStream.destroy();
+        });
+
+        downloadStream.pipe(res);
 
     } catch (error) {
-        console.error('Download error:', error);
-        res.status(500).json({ error: 'Failed to download APK' });
+        console.error('❌ Download error:', error);
+        if (!res.headersSent) {
+            res.status(500).json({ error: 'Failed to download APK' });
+        }
     }
 });
 
