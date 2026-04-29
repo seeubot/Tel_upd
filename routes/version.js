@@ -98,8 +98,10 @@ router.get('/latest', async (req, res) => {
 
 // ──────────────────────────────────────────────
 // GET /api/version/download/:gridfsId
-// Streams the APK directly from MongoDB GridFS.
-// The apkUrl stored in the DB points to this route.
+// Reads the full APK from GridFS into a buffer
+// then sends it in one go — prevents partial/
+// corrupted downloads that cause "problem parsing
+// the package" on Android.
 // ──────────────────────────────────────────────
 router.get('/download/:gridfsId', async (req, res) => {
     try {
@@ -120,20 +122,24 @@ router.get('/download/:gridfsId', async (req, res) => {
 
         const file = files[0];
 
-        res.set('Content-Type', 'application/vnd.android.package-archive');
-        res.set('Content-Disposition', `attachment; filename="${file.filename}"`);
-        res.set('Content-Length', file.length);
+        // Read the entire APK into a buffer first so we can set
+        // an accurate Content-Length — Android requires this to
+        // correctly write and verify the APK file on device.
+        const apkBuffer = await new Promise((resolve, reject) => {
+            const chunks = [];
+            const downloadStream = bucket.openDownloadStream(fileId);
 
-        const downloadStream = bucket.openDownloadStream(fileId);
-
-        downloadStream.on('error', (err) => {
-            console.error('GridFS stream error:', err);
-            if (!res.headersSent) {
-                res.status(500).json({ error: 'Error streaming APK file' });
-            }
+            downloadStream.on('data', (chunk) => chunks.push(chunk));
+            downloadStream.on('error', reject);
+            downloadStream.on('end', () => resolve(Buffer.concat(chunks)));
         });
 
-        downloadStream.pipe(res);
+        res.set('Content-Type', 'application/vnd.android.package-archive');
+        res.set('Content-Disposition', `attachment; filename="${file.filename}"`);
+        res.set('Content-Length', apkBuffer.length);  // exact byte count
+        res.set('Cache-Control', 'no-cache');
+
+        res.send(apkBuffer);
 
     } catch (error) {
         console.error('Download error:', error);
